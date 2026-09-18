@@ -350,6 +350,17 @@ jobs:
           cat >> "$KBUILD_FILE" <<EOF
           ccflags-y += -DKSU_VERSION_FULL=\"v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks\"
           EOF
+          if [ -f "kernel/feature/sucompat.c" ] && ! grep -q "ksu_handle_post_execveat_sucompat" "kernel/feature/sucompat.c"; then
+            echo "Applying ksu_handle_post_execveat_sucompat stub to sucompat.c..."
+            cat >> "kernel/feature/sucompat.c" << 'SUCOMPAT_EOF'
+
+#ifdef CONFIG_KSU_SUSFS
+int ksu_handle_post_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags, int *retval) {
+    return 0;
+}
+#endif
+SUCOMPAT_EOF
+          fi
           echo "✅ SukiSU $KSUVER (v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks)"
 
       - name: ⚡ Setup KernelSU
@@ -426,6 +437,19 @@ jobs:
           grep -q "SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))" fs/proc/task_mmu.c \
             || { echo "❌ SUS_MAP guard missing — real failure"; exit 1; }
           echo "✅ SUSFS applied (fatalcoder method)"
+
+          # Universal weak stub in fs/exec.c so the linker never fails on missing ksu_handle_post_execveat_sucompat
+          if ! grep -q "/* Universal weak stub for SuSFS sucompat hook */" ./fs/exec.c; then
+            cat << 'EXEC_STUB_EOF' >> ./fs/exec.c
+
+/* Universal weak stub for SuSFS sucompat hook */
+#ifdef CONFIG_KSU_SUSFS
+__attribute__((weak)) int ksu_handle_post_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags, int *retval) {
+    return 0;
+}
+#endif
+EXEC_STUB_EOF
+          fi
 
       - name: 📦 Apply SUSFS (KernelSU)
         if: inputs.SUSFS && inputs.ksu_type == 'KernelSU'
