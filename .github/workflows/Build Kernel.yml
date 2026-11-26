@@ -23,10 +23,11 @@ on:
         options:
           - 'ReSukiSU'
           - 'SukiSU Ultra'
+          - 'SukiSU Nova'
           - 'KernelSU'
           - 'KernelSU Next'
       SUSFS:
-        description: 'Enable SuSFS (Enhances hide environment)'
+        description: 'Enable legacy SuSFS kernel patches (turn off for SukiSU Nova)'
         required: true
         type: boolean
         default: true
@@ -159,6 +160,12 @@ jobs:
       actions: write
       contents: read
     steps:
+      - name: Validate SukiSU Nova options
+        if: inputs.ksu_type == 'SukiSU Nova' && inputs.SUSFS
+        run: |
+          echo '::error::SukiSU Nova does not use the legacy SuSFS kernel patches. Disable SUSFS for this variant.'
+          exit 1
+
       - name: 🧠 Add swap space (for LTO link)
         run: |
           sudo fallocate -l 16G /mnt/swap_lto || sudo dd if=/dev/zero of=/mnt/swap_lto bs=1M count=16384
@@ -356,6 +363,18 @@ jobs:
           fi
           echo "✅ SukiSU $KSUVER (v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks)"
 
+      - name: ⚡ Setup SukiSU Nova
+        if: inputs.ksu_type == 'SukiSU Nova'
+        working-directory: kernel_workspace/common
+        env:
+          NOVA_TAG: v3.0.0
+          NOVA_COMMIT: c60f21b9e00e35e898f8d21e0612465b76b9beec
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/$NOVA_COMMIT/kernel/setup.sh" | sh -s -- "$NOVA_TAG"
+          git -C KernelSU rev-parse --verify HEAD | grep -Fx "$NOVA_COMMIT"
+          echo "KSUVER=${NOVA_TAG#v}" >> "$GITHUB_ENV"
+          echo "KSU_BUILD_REF=$NOVA_TAG" >> "$GITHUB_ENV"
+
       - name: ⚡ Setup KernelSU
         if: inputs.ksu_type == 'KernelSU'
         run: |
@@ -489,7 +508,7 @@ jobs:
             "SukiSU Ultra")
               echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$DEFCONFIG"
               ;;
-            "KernelSU")
+            "KernelSU"|"SukiSU Nova")
               echo "CONFIG_KPROBES=y" >> "$DEFCONFIG"
               echo "CONFIG_HAVE_KPROBES=y" >> "$DEFCONFIG"
               echo "CONFIG_KPROBE_EVENTS=y" >> "$DEFCONFIG"
@@ -965,6 +984,12 @@ jobs:
             KCFLAGS="-O2 -pipe -Wno-error -Wno-implicit-function-declaration -Wno-implicit-int -Wno-default-const-init-var-unsafe -Wno-format -Wno-unknown-warning-option" \
             gki_defconfig 2>&1 | tee -a /tmp/kbuild.log
 
+          if [[ "${{ inputs.ksu_type }}" == "SukiSU Nova" ]]; then
+            grep -qx 'CONFIG_KSU=y' "$GITHUB_WORKSPACE/kout/.config"
+            make -j"$(nproc)" LLVM=1 LLVM_IAS=1 ARCH=arm64 O="$GITHUB_WORKSPACE/kout" headers_install
+            test -f "$GITHUB_WORKSPACE/kout/usr/include/linux/unistd.h"
+          fi
+
           make -j$(nproc --all) LLVM=1 LLVM_IAS=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
             CC="ccache clang" LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" \
             O=$GITHUB_WORKSPACE/kout \
@@ -1006,6 +1031,7 @@ jobs:
           fi
           case "${{ inputs.ksu_type }}" in
             "SukiSU Ultra") KSU_TYPENAME="SukiSU-Ultra" ;;
+            "SukiSU Nova") KSU_TYPENAME="SukiSU-Nova" ;;
             "KernelSU Next") KSU_TYPENAME="KSUNext" ;;
             *) KSU_TYPENAME="${{ inputs.ksu_type }}" ;;
           esac
