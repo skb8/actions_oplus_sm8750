@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       ksuver: ${{ steps.ksu_version.outputs.ksuver }}
       ak3name: ${{ steps.create_zip.outputs.ak3name }}
@@ -71,7 +71,7 @@ jobs:
           cd kernel_workspace
 
           sudo apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 \
-            libelf-dev dos2unix pahole cmake &
+            libelf-dev libxml2 dos2unix pahole cmake &
 
           echo "Cloning source repository..."
           curl -L https://github.com/palazik/android_kernel_common_oneplus_sm8750/archive/refs/heads/${{ env.KERNEL_FULL_VERSION }}_oneplus13_coloros16.zip \
