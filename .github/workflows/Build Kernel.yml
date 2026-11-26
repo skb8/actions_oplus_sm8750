@@ -1,8 +1,8 @@
 name: OP13 Kernel Build
-run-name: ${{ inputs.ksu_type }} OP13 Build
+run-name: SukiSU Nova OP13 Build
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.ksu_type }}
+  group: ${{ github.workflow }}-${{ github.ref }}-SukiSU-Nova
   cancel-in-progress: true
 
 env:
@@ -13,142 +13,11 @@ env:
   KERNEL_FULL_VERSION: '6.6.144'
 
 on:
-  workflow_dispatch:
-    inputs:
-      ksu_type:
-        description: 'KernelSU variant'
-        required: true
-        type: choice
-        default: 'ReSukiSU'
-        options:
-          - 'ReSukiSU'
-          - 'SukiSU Ultra'
-          - 'SukiSU Nova'
-          - 'KernelSU'
-          - 'KernelSU Next'
-      SUSFS:
-        description: 'Enable legacy SuSFS kernel patches (turn off for SukiSU Nova)'
-        required: true
-        type: boolean
-        default: true
-      lz4_enable:
-        description: 'Install LZ4 1.10.0 + ZSTD 1.5.7 Patch'
-        required: true
-        type: boolean
-        default: true
-      lz4kd_enable:
-        description: 'Install LZ4KD Patch (ZRAM optimization)'
-        required: true
-        type: boolean
-        default: false
-      bbr_enable:
-        description: "Enable TCP BBR/Brutal (false=off, true=add, default=set as default)"
-        required: true
-        type: choice
-        default: 'true'
-        options:
-          - 'false'
-          - 'true'
-          - 'default'
-      adios_enable:
-        description: 'Enable ADIOS IO Scheduler (Improves IO read/write performance)'
-        required: true
-        type: boolean
-        default: true
-      rekernel_enable:
-        description: 'Enable Re-Kernel Support (Enhances app freezing via NoActive/Freezer)'
-        required: true
-        type: boolean
-        default: false
-      baseband_guard:
-        description: 'Enable Baseband Guard (Anti-brick modem protection)'
-        required: true
-        type: boolean
-        default: true
-      lto_type:
-        description: 'LTO Optimization (none = fast compile, thin = default, full = slow)'
-        required: true
-        type: choice
-        default: 'thin'
-        options:
-          - 'none'
-          - 'thin'
-          - 'full'
-      fengchi:
-        description: 'Enable Fengchi / HMBIRD Optimization'
-        required: true
-        type: boolean
-        default: true
-      bore_enable:
-        description: 'Enable BORE Scheduler (Burst-Oriented Response Enhancer, off by default)'
-        required: true
-        type: boolean
-        default: false
-      zram_writeback:
-        description: 'Enable ZRAM Writeback (better memory management)'
-        required: true
-        type: boolean
-        default: false
-      cpu_opt:
-        description: 'CPU Optimizations (Oryon MCPU tuning for SM8750)'
-        required: true
-        type: boolean
-        default: true
-      f2fs_opt:
-        description: 'F2FS Optimizations (better flash storage performance)'
-        required: true
-        type: boolean
-        default: false
-      wireguard:
-        description: 'Enable WireGuard VPN support'
-        required: true
-        type: boolean
-        default: true
-      netfilter_full:
-        description: 'Full Netfilter (conntrack, NAT, hashlimit)'
-        required: true
-        type: boolean
-        default: false
-      lrng_enable:
-        description: 'Enable LRNG v60 (better entropy for crypto/gaming)'
-        required: true
-        type: boolean
-        default: false
-      wakelock_blocker:
-        description: 'Enable Wakelock Blocker (better idle battery drain)'
-        required: true
-        type: boolean
-        default: true
-      github_release:
-        description: 'Create GitHub Release'
-        required: true
-        type: boolean
-        default: false
-      ntsync_enable:
-        description: 'Enable NTSync (low-latency NT sync primitives, great for gaming/Wine)'
-        required: true
-        type: boolean
-        default: false
-      droidspaces_enable:
-        description: 'Enable Droidspaces (SYSVIPC + PID_NS + POSIX_MQUEUE for proot-distro)'
-        required: true
-        type: boolean
-        default: true
-      ip_set_enable:
-        description: 'Enable IP_SET + IPv6 NAT (advanced firewall + IPv6 masquerade)'
-        required: true
-        type: boolean
-        default: false
-      ttl_enable:
-        description: 'Enable TTL/HL Target (hide tethering from carrier detection)'
-        required: true
-        type: boolean
-        default: false
-      mem_opt_patches:
-        description: 'Enable memory/scheduler optimization patches (from WildKernels)'
-        required: true
-        type: boolean
-        default: true
+  push:
+    branches:
+      - build/sukisu-nova-v3.0.0
+    paths:
+      - '.github/workflows/Build Kernel.yml'
 
 jobs:
   build:
@@ -161,7 +30,7 @@ jobs:
       contents: read
     steps:
       - name: Validate SukiSU Nova options
-        if: inputs.ksu_type == 'SukiSU Nova' && inputs.SUSFS
+        if: ${{ 'SukiSU Nova' == 'SukiSU Nova' && false }}
         run: |
           echo '::error::SukiSU Nova does not use the legacy SuSFS kernel patches. Disable SUSFS for this variant.'
           exit 1
@@ -269,7 +138,7 @@ jobs:
 
       - name: Save ccache-ECS binary cache
         uses: actions/cache/save@v4
-        if: always()
+        if: ${{ always() }}
         with:
           path: /tmp/ccache-ecs-bin
           key: ccache-ecs-${{ runner.os }}-084a7620
@@ -298,7 +167,7 @@ jobs:
 
       - name: Restore LTO Cache
         uses: actions/cache/restore@v4
-        if: inputs.lto_type == 'thin'
+        if: ${{ 'thin' == 'thin' }}
         with:
           path: ${{ env.LDCACHE_DIR }}
           key: lto-cache-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
@@ -326,7 +195,7 @@ jobs:
           find "${{ env.CCACHE_DIR }}" -type f -exec touch -t $(date -d "1 day ago" +%Y%m%d%H%M) {} + || true
 
       - name: ⚡ Setup ReSukiSU
-        if: inputs.ksu_type == 'ReSukiSU'
+        if: ${{ 'SukiSU Nova' == 'ReSukiSU' }}
         run: |
           cd kernel_workspace/common
           echo "🛠️ Setting up ReSukiSU (main)..."
@@ -338,7 +207,7 @@ jobs:
           echo "✅ ReSukiSU $(git rev-parse --short HEAD) (ver $KSUVER)"
 
       - name: ⚡ Setup SukiSU Ultra
-        if: inputs.ksu_type == 'SukiSU Ultra'
+        if: ${{ 'SukiSU Nova' == 'SukiSU Ultra' }}
         run: |
           cd kernel_workspace/common
           echo "🛠️ Setting up SukiSU Ultra (builtin)..."
@@ -364,7 +233,7 @@ jobs:
           echo "✅ SukiSU $KSUVER (v${KSU_API_VERSION}-${KSU_COMMIT_HASH}@palaziks)"
 
       - name: ⚡ Setup SukiSU Nova
-        if: inputs.ksu_type == 'SukiSU Nova'
+        if: ${{ 'SukiSU Nova' == 'SukiSU Nova' }}
         working-directory: kernel_workspace/common
         env:
           NOVA_TAG: v3.0.0
@@ -376,7 +245,7 @@ jobs:
           echo "KSU_BUILD_REF=$NOVA_TAG" >> "$GITHUB_ENV"
 
       - name: ⚡ Setup KernelSU
-        if: inputs.ksu_type == 'KernelSU'
+        if: ${{ 'SukiSU Nova' == 'KernelSU' }}
         run: |
           cd kernel_workspace/common
           echo "🛠️ Setting up KernelSU..."
@@ -390,7 +259,7 @@ jobs:
           echo "✅ KernelSU $(git describe --tags 2>/dev/null || git rev-parse --short HEAD)  (ver $KSUVER)"
 
       - name: ⚡ Setup KernelSU Next
-        if: inputs.ksu_type == 'KernelSU Next'
+        if: ${{ 'SukiSU Nova' == 'KernelSU Next' }}
         run: |
           cd kernel_workspace/common
           echo "🛠️ Setting up KernelSU-Next (legacy branch)..."
@@ -404,7 +273,7 @@ jobs:
       - name: 🔧 Setup Patches
         run: |
           cd kernel_workspace
-          if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
+          if [ "${{ 'false' }}" == "true" ]; then
             git clone --depth=1 -b gki-android15-6.6 https://gitlab.com/simonpunk/susfs4ksu.git &
           fi
           git clone --depth=1 https://github.com/mrcxlinux/kernel_patches.git &
@@ -412,7 +281,7 @@ jobs:
           git clone --depth=1 https://github.com/palazik/kernel_patches.git wildkernels_patches &
           wait
 
-          if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
+          if [ "${{ 'false' }}" == "true" ]; then
             cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
             cp susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -424,7 +293,7 @@ jobs:
           echo "✅ Base patches applied"
 
       - name: 📦 Apply SUSFS (ReSukiSU / SukiSU Ultra)
-        if: inputs.SUSFS && (inputs.ksu_type == 'ReSukiSU' || inputs.ksu_type == 'SukiSU Ultra')
+        if: ${{ false && ('SukiSU Nova' == 'ReSukiSU' || 'SukiSU Nova' == 'SukiSU Ultra') }}
         working-directory: kernel_workspace/common
         run: |
           echo "📦 Pre-patch fixups (fatalcoder android15-6.6 method)..."
@@ -456,7 +325,7 @@ jobs:
           fi
 
       - name: 📦 Apply SUSFS (KernelSU)
-        if: inputs.SUSFS && inputs.ksu_type == 'KernelSU'
+        if: ${{ false && 'SukiSU Nova' == 'KernelSU' }}
         working-directory: kernel_workspace/common
         run: |
           cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
@@ -466,7 +335,7 @@ jobs:
           patch -p1 < 50_add_susfs_in_gki-android15-6.6.patch
 
       - name: 📦 Apply SUSFS (KernelSU Next)
-        if: inputs.SUSFS && inputs.ksu_type == 'KernelSU Next'
+        if: ${{ false && 'SukiSU Nova' == 'KernelSU Next' }}
         working-directory: kernel_workspace/common
         run: |
           cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU-Next/
@@ -501,7 +370,7 @@ jobs:
           cd kernel_workspace
           DEFCONFIG="./common/arch/arm64/configs/gki_defconfig"
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
-          case "${{ inputs.ksu_type }}" in
+          case "${{ 'SukiSU Nova' }}" in
             "ReSukiSU")
               echo 'CONFIG_KSU_FULL_NAME_FORMAT="v%KSU_VERSION%-%COMMIT_SHA%@palaziks"' >> "$DEFCONFIG"
               ;;
@@ -520,7 +389,7 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> "$DEFCONFIG"
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$DEFCONFIG"
 
-          if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+          if [[ "${{ 'false' }}" == "true" ]]; then
             echo "CONFIG_ZSMALLOC=y" >> "$DEFCONFIG"
             echo "CONFIG_CRYPTO_LZ4HC=y" >> "$DEFCONFIG"
             echo "CONFIG_CRYPTO_LZ4K=y" >> "$DEFCONFIG"
@@ -535,7 +404,7 @@ jobs:
           echo "CONFIG_LLVM_POLLY=y" >> "$DEFCONFIG"
           echo "CONFIG_LD_DEAD_CODE_DATA_ELIMINATION=y" >> "$DEFCONFIG"
 
-          if [ "${{ github.event.inputs.SUSFS }}" == "true" ]; then
+          if [ "${{ 'false' }}" == "true" ]; then
             echo "📦 Enabling SUSFS features..."
             echo "CONFIG_KSU_SUSFS=y" >> "$DEFCONFIG"
             echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
@@ -547,7 +416,7 @@ jobs:
             echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$DEFCONFIG"
             echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$DEFCONFIG"
             echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$DEFCONFIG"
-            case "${{ inputs.ksu_type }}" in
+            case "${{ 'SukiSU Nova' }}" in
               "SukiSU Ultra")
                 echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> "$DEFCONFIG"
                 echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "$DEFCONFIG"
@@ -564,7 +433,7 @@ jobs:
           fi
 
       - name: Apply LZ4 1.10.0 & ZSTD 1.5.7 Patches
-        if: inputs.lz4_enable
+        if: ${{ true }}
         run: |
           echo "Adding LZ4 & ZSTD patches..."
           cd kernel_workspace/common
@@ -577,7 +446,7 @@ jobs:
           patch -p1 < 002-zstd.patch || echo "ZSTD Patch failed or already applied"
 
       - name: Apply LZ4KD Patch
-        if: inputs.lz4kd_enable
+        if: ${{ false }}
         run: |
           echo "Adding LZ4KD patch..."
           cd kernel_workspace/common
@@ -588,7 +457,7 @@ jobs:
           patch -p1 -F 3 < lz4kd.patch || true
 
       - name: Configure ZRAM Writeback
-        if: inputs.zram_writeback
+        if: ${{ false }}
         working-directory: kernel_workspace
         run: |
           echo "Enabling ZRAM Writeback support..."
@@ -602,7 +471,7 @@ jobs:
         run: |
           DEFCONFIG=arch/arm64/configs/gki_defconfig
           sed -i '/^CONFIG_HMBIRD_SCHED=/d; /^# CONFIG_HMBIRD_SCHED is not set/d' "$DEFCONFIG"
-          if [ "${{ inputs.fengchi }}" == "true" ]; then
+          if [ "${{ true }}" == "true" ]; then
             if [ ! -d kernel/sched/hmbird ]; then
               echo "::error::kernel/sched/hmbird is missing from the kernel source"
               exit 1
@@ -615,7 +484,7 @@ jobs:
           fi
 
       - name: Prepare CPU Optimizations (Oryon SM8750)
-        if: inputs.cpu_opt
+        if: ${{ true }}
         run: |
           echo "EXTRA_CFLAGS=-mcpu=oryon-1" >> $GITHUB_ENV
           echo "✅ Oryon flags prepared."
@@ -629,7 +498,7 @@ jobs:
           echo "Unicode fix applied"
 
       - name: Apply BORE Scheduler
-        if: inputs.bore_enable
+        if: ${{ false }}
         working-directory: kernel_workspace/common
         run: |
           echo "CONFIG_SCHED_BORE=y" >> arch/arm64/configs/gki_defconfig
@@ -639,7 +508,7 @@ jobs:
           echo "✅ BORE scheduler applied"
 
       - name: Apply Memory & Scheduler Optimization Patches
-        if: inputs.mem_opt_patches
+        if: ${{ true }}
         working-directory: kernel_workspace/common
         run: |
           echo "Applying WildKernels optimization patches..."
@@ -683,7 +552,7 @@ jobs:
           echo "✅ Optimization patches applied"
 
       - name: Apply NTSync Patch
-        if: inputs.ntsync_enable
+        if: ${{ false }}
         working-directory: kernel_workspace/common
         run: |
           echo "Enabling NTSync (NT kernel sync primitives)..."
@@ -721,7 +590,7 @@ jobs:
           echo "✅ NTSync enabled"
 
       - name: Add Droidspaces Support
-        if: inputs.droidspaces_enable
+        if: ${{ true }}
         working-directory: kernel_workspace/common
         run: |
           echo "Enabling Droidspaces (portable Linux containers)..."
@@ -749,7 +618,7 @@ jobs:
           echo "✅ Droidspaces support enabled"
 
       - name: Add IP_SET + IPv6 NAT Support
-        if: inputs.ip_set_enable
+        if: ${{ false }}
         working-directory: kernel_workspace/common
         run: |
           echo "Enabling IP_SET + IPv6 NAT..."
@@ -789,7 +658,7 @@ jobs:
           echo "✅ IP_SET + IPv6 NAT enabled"
 
       - name: Add TTL/HL Target Support
-        if: inputs.ttl_enable
+        if: ${{ false }}
         working-directory: kernel_workspace/common
         run: |
           echo "Enabling TTL/HL Target (hide tethering from carrier)..."
@@ -801,7 +670,7 @@ jobs:
           echo "✅ TTL/HL Target enabled"
 
       - name: F2FS Optimizations
-        if: inputs.f2fs_opt
+        if: ${{ false }}
         working-directory: kernel_workspace
         run: |
           cat >> common/arch/arm64/configs/gki_defconfig << 'EOF'
@@ -817,13 +686,13 @@ jobs:
           EOF
 
       - name: Enable WireGuard
-        if: inputs.wireguard
+        if: ${{ true }}
         working-directory: kernel_workspace
         run: |
           echo "CONFIG_WIREGUARD=y" >> common/arch/arm64/configs/gki_defconfig
 
       - name: Enable Full Netfilter
-        if: inputs.netfilter_full
+        if: ${{ false }}
         working-directory: kernel_workspace
         run: |
           cat >> common/arch/arm64/configs/gki_defconfig << 'EOF'
@@ -845,7 +714,7 @@ jobs:
           EOF
 
       - name: Enable LRNG v60
-        if: inputs.lrng_enable
+        if: ${{ false }}
         working-directory: kernel_workspace/common
         run: |
           patch -p1 --forward --no-backup-if-mismatch < ../wildkernels_patches/common/lrng/lrng_v60_android15-6.6.patch
@@ -860,7 +729,7 @@ jobs:
           echo "✅ LRNG v60 enabled"
 
       - name: Enable Wakelock Blocker
-        if: inputs.wakelock_blocker
+        if: ${{ true }}
         working-directory: kernel_workspace/common
         run: |
           cat >> arch/arm64/configs/gki_defconfig << 'EOF'
@@ -871,7 +740,7 @@ jobs:
 
       - name: Configure BBR & Brutal
         run: |
-          if [[ "${{ github.event.inputs.bbr_enable }}" != "false" ]]; then
+          if [[ "${{ 'true' }}" != "false" ]]; then
             cd kernel_workspace
             echo "CONFIG_TCP_CONG_ADVANCED=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_TCP_CONG_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -883,7 +752,7 @@ jobs:
             echo "CONFIG_TCP_CONG_BRUTAL=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_NET_SCH_FQ=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_NET_SCH_FQ_CODEL=y" >> ./common/arch/arm64/configs/gki_defconfig
-            if [[ "${{ github.event.inputs.bbr_enable }}" == "default" ]]; then
+            if [[ "${{ 'true' }}" == "default" ]]; then
               echo "CONFIG_DEFAULT_TCP_CONG=bbr" >> ./common/arch/arm64/configs/gki_defconfig
             else
               echo "CONFIG_DEFAULT_TCP_CONG=cubic" >> ./common/arch/arm64/configs/gki_defconfig
@@ -908,29 +777,29 @@ jobs:
       - name: Configure LTO
         run: |
           cd kernel_workspace
-          if [[ "${{ github.event.inputs.lto_type }}" == "none" ]]; then
+          if [[ "${{ 'thin' }}" == "none" ]]; then
             echo "CONFIG_LTO_NONE=y" >> ./common/arch/arm64/configs/gki_defconfig
-          elif [[ "${{ github.event.inputs.lto_type }}" == "full" ]]; then
+          elif [[ "${{ 'thin' }}" == "full" ]]; then
             echo "CONFIG_LTO_CLANG_FULL=y" >> ./common/arch/arm64/configs/gki_defconfig
           else
             echo "CONFIG_LTO_CLANG_THIN=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
 
       - name: Configure ADIOS IO
-        if: inputs.adios_enable
+        if: ${{ true }}
         run: |
           cd kernel_workspace
           echo "CONFIG_MQ_IOSCHED_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_MQ_IOSCHED_DEFAULT_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
 
       - name: Configure Re-Kernel
-        if: inputs.rekernel_enable
+        if: ${{ false }}
         run: |
           cd kernel_workspace
           echo "CONFIG_REKERNEL=y" >> ./common/arch/arm64/configs/gki_defconfig
 
       - name: Configure Baseband Guard
-        if: inputs.baseband_guard
+        if: ${{ true }}
         run: |
           cd kernel_workspace
           echo "CONFIG_BBG=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -984,7 +853,7 @@ jobs:
             KCFLAGS="-O2 -pipe -Wno-error -Wno-implicit-function-declaration -Wno-implicit-int -Wno-default-const-init-var-unsafe -Wno-format -Wno-unknown-warning-option" \
             gki_defconfig 2>&1 | tee -a /tmp/kbuild.log
 
-          if [[ "${{ inputs.ksu_type }}" == "SukiSU Nova" ]]; then
+          if [[ "${{ 'SukiSU Nova' }}" == "SukiSU Nova" ]]; then
             grep -qx 'CONFIG_KSU=y' "$GITHUB_WORKSPACE/kout/.config"
             make -j"$(nproc)" LLVM=1 LLVM_IAS=1 ARCH=arm64 O="$GITHUB_WORKSPACE/kout" headers_install
             test -f "$GITHUB_WORKSPACE/kout/usr/include/linux/unistd.h"
@@ -1004,14 +873,14 @@ jobs:
           df -h
 
       - name: 📦 Save New CCache
-        if: success()
+        if: ${{ success() }}
         uses: actions/cache/save@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ env.CCACHE_KEY }}-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: 📦 Save LTO CCache
-        if: success() && inputs.lto_type == 'thin'
+        if: ${{ success() && 'thin' == 'thin' }}
         uses: actions/cache/save@v4
         with:
           path: ${{ env.LDCACHE_DIR }}
@@ -1029,13 +898,13 @@ jobs:
             echo "Kernel Image not found, build may have failed."
             exit 1
           fi
-          case "${{ inputs.ksu_type }}" in
+          case "${{ 'SukiSU Nova' }}" in
             "SukiSU Ultra") KSU_TYPENAME="SukiSU-Ultra" ;;
             "SukiSU Nova") KSU_TYPENAME="SukiSU-Nova" ;;
             "KernelSU Next") KSU_TYPENAME="KSUNext" ;;
-            *) KSU_TYPENAME="${{ inputs.ksu_type }}" ;;
+            *) KSU_TYPENAME="${{ 'SukiSU Nova' }}" ;;
           esac
-          if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+          if [[ "${{ 'false' }}" == "true" ]]; then
             wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/heads/$GITHUB_REF_NAME/zram.zip || true
           fi
           AK3_NAME=AnyKernel3_${KSU_TYPENAME}_${{ env.KSUVER }}_${{ env.KERNEL_FULL_VERSION }}_palaziks-ShiftPorts.zip
@@ -1053,20 +922,20 @@ jobs:
           echo "Kernel Ver: $FULL_VERSION" >> ./ak3.log
           echo "KSU Branch: ${KSU_TYPENAME}" >> ./ak3.log
           echo "KSU Ver: ${KSUVER}" >> ./ak3.log
-          echo "SuSFS: ${{ github.event.inputs.SUSFS }}" >> ./ak3.log
-          echo "LZ4: ${{ github.event.inputs.lz4_enable }}" >> ./ak3.log
-          echo "LZ4KD: ${{ github.event.inputs.lz4kd_enable }}" >> ./ak3.log
-          echo "BBR&Brutal: ${{ github.event.inputs.bbr_enable }}" >> ./ak3.log
+          echo "SuSFS: ${{ 'false' }}" >> ./ak3.log
+          echo "LZ4: ${{ 'true' }}" >> ./ak3.log
+          echo "LZ4KD: ${{ 'false' }}" >> ./ak3.log
+          echo "BBR&Brutal: ${{ 'true' }}" >> ./ak3.log
           echo "BBRv3: true (stock)" >> ./ak3.log
-          echo "ADIOS: ${{ github.event.inputs.adios_enable }}" >> ./ak3.log
-          echo "Re-Kernel: ${{ github.event.inputs.rekernel_enable }}" >> ./ak3.log
-          echo "BBG: ${{ github.event.inputs.baseband_guard }}" >> ./ak3.log
-          echo "NTSync: ${{ github.event.inputs.ntsync_enable }}" >> ./ak3.log
-          echo "Droidspaces: ${{ github.event.inputs.droidspaces_enable }}" >> ./ak3.log
-          echo "IP_SET+IPv6NAT: ${{ github.event.inputs.ip_set_enable }}" >> ./ak3.log
-          echo "TTL: ${{ github.event.inputs.ttl_enable }}" >> ./ak3.log
-          echo "MemOpt: ${{ github.event.inputs.mem_opt_patches }}" >> ./ak3.log
-          echo "BORE: ${{ github.event.inputs.bore_enable }}" >> ./ak3.log
+          echo "ADIOS: ${{ 'true' }}" >> ./ak3.log
+          echo "Re-Kernel: ${{ 'false' }}" >> ./ak3.log
+          echo "BBG: ${{ 'true' }}" >> ./ak3.log
+          echo "NTSync: ${{ 'false' }}" >> ./ak3.log
+          echo "Droidspaces: ${{ 'true' }}" >> ./ak3.log
+          echo "IP_SET+IPv6NAT: ${{ 'false' }}" >> ./ak3.log
+          echo "TTL: ${{ 'false' }}" >> ./ak3.log
+          echo "MemOpt: ${{ 'true' }}" >> ./ak3.log
+          echo "BORE: ${{ 'false' }}" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 📤 Upload AnyKernel3
@@ -1095,7 +964,7 @@ jobs:
           path: ./zram/*
 
       - name: Send Telegram Notification (Success)
-        if: success()
+        if: ${{ success() }}
         env:
           TELEGRAPH_TOKEN: ${{ secrets.TELEGRAPH_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -1109,38 +978,38 @@ jobs:
           TIME_NOW="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
 
           export TG_KERNEL_VERSION="${{ env.KERNEL_FULL_VERSION }}"
-          export TG_KSU_DISPLAY="${{ inputs.ksu_type }}"
+          export TG_KSU_DISPLAY="${{ 'SukiSU Nova' }}"
           export TG_KSUVER="${{ env.KSUVER }}"
           export TG_SUFFIX="palaziks-ShiftPorts"
-          export TG_LTO="${{ github.event.inputs.lto_type }}"
+          export TG_LTO="${{ 'thin' }}"
           export TG_BUILD_NUM="${{ github.run_number }}"
           export TG_TIME_NOW="$TIME_NOW"
           export TG_RUN_URL="$RUN_URL"
           export TG_REPO="${{ github.repository }}"
-          export TG_SUSFS="${{ github.event.inputs.SUSFS }}"
-          export TG_BBR="${{ github.event.inputs.bbr_enable }}"
+          export TG_SUSFS="${{ 'false' }}"
+          export TG_BBR="${{ 'true' }}"
           export TG_BBR3="true"
-          export TG_ADIOS="${{ github.event.inputs.adios_enable }}"
-          export TG_BBG="${{ github.event.inputs.baseband_guard }}"
-          export TG_LZ4="${{ github.event.inputs.lz4_enable }}"
-          export TG_LZ4KD="${{ github.event.inputs.lz4kd_enable }}"
+          export TG_ADIOS="${{ 'true' }}"
+          export TG_BBG="${{ 'true' }}"
+          export TG_LZ4="${{ 'true' }}"
+          export TG_LZ4KD="${{ 'false' }}"
           export TG_MM="true"
-          export TG_FENGCHI="${{ github.event.inputs.fengchi }}"
+          export TG_FENGCHI="${{ 'true' }}"
           export TG_HMBIRD="false"
           export TG_UFIX="true"
-          export TG_BORE="${{ github.event.inputs.bore_enable }}"
-          export TG_ZWB="${{ github.event.inputs.zram_writeback }}"
+          export TG_BORE="${{ 'false' }}"
+          export TG_ZWB="${{ 'false' }}"
           export TG_CLANG="ZyCromerZ-19"
-          export TG_CPU_OPT="${{ github.event.inputs.cpu_opt }}"
-          export TG_F2FS="${{ github.event.inputs.f2fs_opt }}"
-          export TG_WG="${{ github.event.inputs.wireguard }}"
-          export TG_LRNG="${{ github.event.inputs.lrng_enable }}"
-          export TG_WLB="${{ github.event.inputs.wakelock_blocker }}"
-          export TG_NTSYNC="${{ github.event.inputs.ntsync_enable }}"
-          export TG_DROIDSPACES="${{ github.event.inputs.droidspaces_enable }}"
-          export TG_IP_SET="${{ github.event.inputs.ip_set_enable }}"
-          export TG_TTL="${{ github.event.inputs.ttl_enable }}"
-          export TG_MEM_OPT="${{ github.event.inputs.mem_opt_patches }}"
+          export TG_CPU_OPT="${{ 'true' }}"
+          export TG_F2FS="${{ 'false' }}"
+          export TG_WG="${{ 'true' }}"
+          export TG_LRNG="${{ 'false' }}"
+          export TG_WLB="${{ 'true' }}"
+          export TG_NTSYNC="${{ 'false' }}"
+          export TG_DROIDSPACES="${{ 'true' }}"
+          export TG_IP_SET="${{ 'false' }}"
+          export TG_TTL="${{ 'false' }}"
+          export TG_MEM_OPT="${{ 'true' }}"
 
           TELEGRAPH_URL=$(python3 << 'PYEOF'
           import json, urllib.request, urllib.parse, os
@@ -1243,7 +1112,7 @@ jobs:
           CAPTION="✅ <b>Kernel Build Successful!</b>
 
           📱 <b>Device:</b> <code>OnePlus 13</code>
-          ⚡ <b>KSU:</b> <code>${{ inputs.ksu_type }}</code>
+          ⚡ <b>KSU:</b> <code>${{ 'SukiSU Nova' }}</code>
           📅 <b>Date:</b> $DATE
           📝 <b>Commit:</b> <code>$COMMIT_MSG</code>
           🔢 <b>Hash:</b> <a href=\"$REPO_URL/commit/${{ github.sha }}\">$COMMIT_HASH</a>
@@ -1257,7 +1126,7 @@ jobs:
             -F parse_mode="HTML"
 
       - name: Send Telegram Notification (Failure)
-        if: failure()
+        if: ${{ failure() }}
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -1268,7 +1137,7 @@ jobs:
           CAPTION="❌ <b>Kernel Build Failed!</b>
 
           📱 <b>Device:</b> <code>OnePlus 13</code>
-          ⚡ <b>KSU:</b> <code>${{ inputs.ksu_type }}</code>
+          ⚡ <b>KSU:</b> <code>${{ 'SukiSU Nova' }}</code>
           📅 <b>Date:</b> $DATE
           📝 <b>Commit:</b> <code>$COMMIT_MSG</code>
           🔢 <b>Hash:</b> <a href=\"$REPO_URL/commit/${{ github.sha }}\">$(echo "${{ github.sha }}" | cut -c1-8)</a>"
@@ -1312,46 +1181,47 @@ jobs:
           echo "TIME_FORM=$TIME_FORM" >> $GITHUB_ENV
           TAG_HEAD="OPPO-OPlus-Realme-build"
           echo "TAG_HEAD=$TAG_HEAD" >> $GITHUB_ENV
-          echo "KSU_TYPENAME=${{ inputs.ksu_type }}" >> $GITHUB_ENV
+          echo "KSU_TYPENAME=${{ 'SukiSU Nova' }}" >> $GITHUB_ENV
 
       - name: Create Release
-        if: ${{ github.event.inputs.github_release == 'true' }}
+        if: ${{ 'true' == 'true' }}
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << 'EOF' > release_notes.md
-          ### 📱 OnePlus 13 ${{ inputs.ksu_type }} SM8750 Generic Kernel
+          ### 📱 OnePlus 13 ${{ 'SukiSU Nova' }} SM8750 Generic Kernel
           > ⚠️ **ROM Compatibility:** Built with **ZyCromerZ Clang** for **ColorOS / OxygenOS** only. To flash on an **AOSP**-based ROM, run the `OP13 Kernel AOSP Build` workflow yourself (AOSP Clang builds are for AOSP ROMs only).
 
           - **Kernel Version:** ${{ env.FULL_VERSION }}
           - **Build Time:** ${{ env.TIME_FORM }}
-          - **KSU Branch:** ${{ inputs.ksu_type }}
-          - **SuSFS:** ${{ github.event.inputs.SUSFS }}
-          - **NTSync:** ${{ github.event.inputs.ntsync_enable }}
-          - **Droidspaces:** ${{ github.event.inputs.droidspaces_enable }}
-          - **IP_SET + IPv6 NAT:** ${{ github.event.inputs.ip_set_enable }}
-          - **TTL Target:** ${{ github.event.inputs.ttl_enable }}
-          - **Memory & Scheduler Optimizations:** ${{ github.event.inputs.mem_opt_patches }}
+          - **KSU Branch:** ${{ 'SukiSU Nova' }}
+          - **SuSFS:** ${{ 'false' }}
+          - **NTSync:** ${{ 'false' }}
+          - **Droidspaces:** ${{ 'true' }}
+          - **IP_SET + IPv6 NAT:** ${{ 'false' }}
+          - **TTL Target:** ${{ 'false' }}
+          - **Memory & Scheduler Optimizations:** ${{ 'true' }}
           - **Multi-Manager:** true
-          - **LZ4:** ${{ github.event.inputs.lz4_enable }}
-          - **LZ4KD:** ${{ github.event.inputs.lz4kd_enable }}
-          - **ZRAM Writeback:** ${{ github.event.inputs.zram_writeback }}
-          - **BBR/Brutal:** ${{ github.event.inputs.bbr_enable }}
+          - **LZ4:** ${{ 'true' }}
+          - **LZ4KD:** ${{ 'false' }}
+          - **ZRAM Writeback:** ${{ 'false' }}
+          - **BBR/Brutal:** ${{ 'true' }}
           - **BBRv3:** true (stock)
-          - **ADIOS IO:** ${{ github.event.inputs.adios_enable }}
-          - **Baseband Guard:** ${{ github.event.inputs.baseband_guard }}
-          - **Fengchi:** ${{ github.event.inputs.fengchi }}
-          - **Oryon CPU Optimizations:** ${{ github.event.inputs.cpu_opt }}
+          - **ADIOS IO:** ${{ 'true' }}
+          - **Baseband Guard:** ${{ 'true' }}
+          - **Fengchi:** ${{ 'true' }}
+          - **Oryon CPU Optimizations:** ${{ 'true' }}
           - **Unicode Fix:** true (stock)
-          - **BORE Scheduler:** ${{ github.event.inputs.bore_enable }}
-          - **WireGuard:** ${{ github.event.inputs.wireguard }}
-          - **LRNG v60:** ${{ github.event.inputs.lrng_enable }}
-          - **Wakelock Blocker:** ${{ github.event.inputs.wakelock_blocker }}
+          - **BORE Scheduler:** ${{ 'false' }}
+          - **WireGuard:** ${{ 'true' }}
+          - **LRNG v60:** ${{ 'false' }}
+          - **Wakelock Blocker:** ${{ 'true' }}
           EOF
 
           gh release create "${{ env.TAG_HEAD }}-${{ env.TIME }}" \
             --repo "${{ github.repository }}" \
+            --target "$GITHUB_SHA" \
             --title "${{ env.TAG_HEAD }}-${{ env.FULL_VERSION }}" \
             --notes-file release_notes.md \
             release_zips/AnyKernel3_*.zip
