@@ -367,10 +367,11 @@ jobs:
         if: inputs.ksu_type == 'SukiSU Nova'
         working-directory: kernel_workspace/common
         env:
-          NOVA_TAG: v3.0.0
-          NOVA_COMMIT: c60f21b9e00e35e898f8d21e0612465b76b9beec
+          NOVA_REPOSITORY: https://git.zako.shirkneko.top:20004/shirkneko/SukiSU
+          NOVA_TAG: v3.0.0-r1
+          NOVA_COMMIT: 39feda0cf136951f8908cbc39e42b0128b4468db
         run: |
-          curl -fsSL "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/$NOVA_COMMIT/kernel/setup.sh" | sh -s -- "$NOVA_TAG"
+          curl -fsSL --retry 3 "$NOVA_REPOSITORY/raw/commit/$NOVA_COMMIT/kernel/setup.sh" | sh -s -- "$NOVA_TAG"
           git -C KernelSU rev-parse --verify HEAD | grep -Fx "$NOVA_COMMIT"
           echo "KSUVER=${NOVA_TAG#v}" >> "$GITHUB_ENV"
           echo "KSU_BUILD_REF=$NOVA_TAG" >> "$GITHUB_ENV"
@@ -984,7 +985,9 @@ jobs:
             KCFLAGS="-O2 -pipe -Wno-error -Wno-implicit-function-declaration -Wno-implicit-int -Wno-default-const-init-var-unsafe -Wno-format -Wno-unknown-warning-option" \
             gki_defconfig 2>&1 | tee -a /tmp/kbuild.log
 
+          nova_make_args=()
           if [[ "${{ inputs.ksu_type }}" == "SukiSU Nova" ]]; then
+            nova_make_args+=("KSU_RELEASE_VER=$KSUVER")
             grep -qx 'CONFIG_KSU=y' "$GITHUB_WORKSPACE/kout/.config"
             make -j"$(nproc)" LLVM=1 LLVM_IAS=1 ARCH=arm64 O="$GITHUB_WORKSPACE/kout" headers_install
             test -f "$GITHUB_WORKSPACE/kout/usr/include/linux/unistd.h"
@@ -994,7 +997,7 @@ jobs:
             CC="ccache clang" LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" \
             O=$GITHUB_WORKSPACE/kout \
             KCFLAGS="-O2 -pipe -Wno-error -Wno-implicit-function-declaration -Wno-implicit-int -Wno-default-const-init-var-unsafe -Wno-format -Wno-unknown-warning-option ${EXTRA_CFLAGS:-} ${MAP}" \
-            Image 2>&1 | tee -a /tmp/kbuild.log
+            "${nova_make_args[@]}" Image 2>&1 | tee -a /tmp/kbuild.log
 
           echo "Kernel Compilation Complete!"
           ccache -c
