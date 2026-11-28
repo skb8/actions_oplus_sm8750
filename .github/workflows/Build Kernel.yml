@@ -366,15 +366,27 @@ jobs:
       - name: ⚡ Setup SukiSU Nova
         if: inputs.ksu_type == 'SukiSU Nova'
         working-directory: kernel_workspace/common
+        shell: bash
         env:
           NOVA_REPOSITORY: https://git.zako.shirkneko.top:20004/shirkneko/SukiSU
-          NOVA_TAG: v3.0.0-r1
-          NOVA_COMMIT: 39feda0cf136951f8908cbc39e42b0128b4468db
+          NOVA_RELEASE_API: https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases/latest
         run: |
-          curl -fsSL --retry 3 "$NOVA_REPOSITORY/raw/commit/$NOVA_COMMIT/kernel/setup.sh" | sh -s -- "$NOVA_TAG"
-          git -C KernelSU rev-parse --verify HEAD | grep -Fx "$NOVA_COMMIT"
-          echo "KSUVER=${NOVA_TAG#v}" >> "$GITHUB_ENV"
-          echo "KSU_BUILD_REF=$NOVA_TAG" >> "$GITHUB_ENV"
+          nova_tag=$(curl -fsSL --retry 3 "$NOVA_RELEASE_API" | jq -er '
+            select(.draft == false and .prerelease == false)
+            | .tag_name | strings | select(test("^v[0-9][A-Za-z0-9._-]*$"))
+          ')
+          tag_ref="refs/tags/$nova_tag"
+          nova_commit=$(git ls-remote --exit-code "$NOVA_REPOSITORY.git" "$tag_ref" "$tag_ref^{}" | awk '
+            NR == 1 { fallback = $1 }
+            /\^\{\}$/ { peeled = $1 }
+            END { print (peeled ? peeled : fallback) }
+          ')
+          [[ "$nova_commit" =~ ^[0-9a-f]{40}$ ]]
+          echo "Building SukiSU Nova $nova_tag ($nova_commit)"
+          curl -fsSL --retry 3 "$NOVA_REPOSITORY/raw/commit/$nova_commit/kernel/setup.sh" | sh -s -- "$nova_tag"
+          git -C KernelSU rev-parse --verify HEAD | grep -Fx "$nova_commit"
+          echo "KSUVER=${nova_tag#v}" >> "$GITHUB_ENV"
+          echo "KSU_BUILD_REF=$nova_tag" >> "$GITHUB_ENV"
 
       - name: ⚡ Setup KernelSU
         if: inputs.ksu_type == 'KernelSU'
